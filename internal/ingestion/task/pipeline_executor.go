@@ -39,6 +39,7 @@ import (
 	"ragflow/internal/ingestion/mediacache"
 	pipelinepkg "ragflow/internal/ingestion/pipeline"
 	indexdoc "ragflow/internal/ingestion/task/indexdoc"
+	"ragflow/internal/permission"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -229,6 +230,9 @@ func (s *PipelineExecutor) Doc() *entity.Document     { return &s.taskCtx.Doc }
 func (s *PipelineExecutor) Tenant() *entity.Tenant    { return &s.taskCtx.Tenant }
 
 func (s *PipelineExecutor) Execute(ctx context.Context) (*PipelineResult, error) {
+	if s.taskCtx != nil && s.taskCtx.Tenant.ID != "" && permission.TenantIDFromContext(ctx) == "" {
+		ctx = permission.WithTenantID(ctx, s.taskCtx.Tenant.ID)
+	}
 	start := time.Now()
 	if err := ctx.Err(); err != nil {
 		return nil, err

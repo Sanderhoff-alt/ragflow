@@ -130,7 +130,7 @@ func (a *AnthropicModel) ChatWithMessages(ctx context.Context, modelName string,
 		if err != nil && modelUsage != nil && modelUsage.ErrorMessage == "" {
 			modelUsage.ErrorMessage = err.Error()
 		}
-		recordResponseUsage(modelUsage, parts.RequestID, parts.Usage, "chat")
+		recordResponseUsageWithContext(ctx, modelUsage, parts.RequestID, parts.Usage, "chat")
 	}
 	if err != nil {
 		return nil, err
@@ -766,7 +766,7 @@ func (a *AnthropicModel) ChatStreamlyWithSender(ctx context.Context, modelName s
 				modelUsage.ErrorMessage = errMsg
 			}
 		}
-		applyStreamUsage(modelConfig, modelUsage, &streamUsage)
+		applyStreamUsageWithContext(ctx, modelConfig, modelUsage, &streamUsage)
 	}
 	defer recordKnownUsage()
 
