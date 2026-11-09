@@ -47,11 +47,41 @@ func tokenUsageFromRaw(rawUsage map[string]any) *TokenUsage {
 	usage.CompletionTokens = extractToken(rawUsage, "completion_tokens", "output_tokens")
 	usage.TotalTokens = extractToken(rawUsage, "total_tokens")
 
+	// 1. Cache Read / Hit
+	usage.CacheReadTokens = extractNestedToken(rawUsage, "prompt_tokens_details", "cached_tokens", "cache_read_tokens")
+	if usage.CacheReadTokens == 0 {
+		usage.CacheReadTokens = extractToken(rawUsage, "prompt_cache_hit_tokens", "cache_read_input_tokens", "cacheReadInputTokens")
+	}
+
+	// 2. Cache Write / Creation
+	usage.CacheCreationTokens = extractNestedToken(rawUsage, "prompt_tokens_details", "cache_write_tokens", "cache_creation_tokens")
+	if usage.CacheCreationTokens == 0 {
+		usage.CacheCreationTokens = extractToken(rawUsage, "cache_creation_input_tokens", "cacheWriteInputTokens")
+	}
+
+	// 3. Reasoning / Thinking
+	usage.ReasoningTokens = extractNestedToken(rawUsage, "completion_tokens_details", "reasoning_tokens")
+	if usage.ReasoningTokens == 0 {
+		usage.ReasoningTokens = extractToken(rawUsage, "reasoning_tokens")
+	}
+
 	if usage.TotalTokens == 0 {
 		usage.TotalTokens = usage.PromptTokens + usage.CompletionTokens
 	}
 
+	if rawBytes, err := json.Marshal(rawUsage); err == nil {
+		usage.RawDetails = string(rawBytes)
+	}
+
 	return usage
+}
+
+// extractNestedToken reads a numeric field from a nested map object.
+func extractNestedToken(m map[string]any, parentKey string, keys ...string) int {
+	if parent, ok := m[parentKey].(map[string]any); ok && parent != nil {
+		return extractToken(parent, keys...)
+	}
+	return 0
 }
 
 // extractToken reads a numeric field from a map, trying each key in order.

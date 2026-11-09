@@ -257,6 +257,9 @@ func TestAnthropicChatInvalidContentPreservesUsage(t *testing.T) {
 	if modelUsage.TotalTokens != 200 {
 		t.Errorf("modelUsage.TotalTokens=%d, want 200", modelUsage.TotalTokens)
 	}
+	if modelUsage.CacheReadTokens != 30 {
+		t.Errorf("modelUsage.CacheReadTokens=%d, want 30", modelUsage.CacheReadTokens)
+	}
 	if modelUsage.RequestID != "msg_invalid_content" {
 		t.Errorf("modelUsage.RequestID=%q, want msg_invalid_content", modelUsage.RequestID)
 	}
@@ -668,7 +671,7 @@ func TestAnthropicChatStreamlyWithSenderCumulativeUsageUpdate(t *testing.T) {
 	ctx := t.Context()
 
 	apiKey := "test-key"
-	modelUsage := &common.ModelUsage{}
+	modelUsage := &common.ModelUsage{RawDetails: `{"stale_marker":true}`}
 	chatConfig := &ChatConfig{}
 	err := newAnthropicForTest(srv.URL).ChatStreamlyWithSender(
 		ctx,
@@ -694,8 +697,26 @@ func TestAnthropicChatStreamlyWithSenderCumulativeUsageUpdate(t *testing.T) {
 	if modelUsage.TotalTokens != 185 {
 		t.Errorf("TotalTokens=%d, want 185", modelUsage.TotalTokens)
 	}
+	if modelUsage.CacheReadTokens != 20 {
+		t.Errorf("CacheReadTokens=%d, want 20", modelUsage.CacheReadTokens)
+	}
+	if modelUsage.CacheCreationTokens != 10 {
+		t.Errorf("CacheCreationTokens=%d, want 10", modelUsage.CacheCreationTokens)
+	}
 	if modelUsage.RequestID != "msg_stream_cumul" {
 		t.Errorf("RequestID=%q, want msg_stream_cumul", modelUsage.RequestID)
+	}
+	if !strings.Contains(modelUsage.RawDetails, `"output_tokens":45`) {
+		t.Errorf("expected RawDetails to contain output_tokens=45, got %q", modelUsage.RawDetails)
+	}
+	if !strings.Contains(modelUsage.RawDetails, `"input_tokens":110`) {
+		t.Errorf("expected RawDetails to retain cumulative input_tokens=110, got %q", modelUsage.RawDetails)
+	}
+	if !strings.Contains(modelUsage.RawDetails, `"cache_read_input_tokens":20`) {
+		t.Errorf("expected RawDetails to retain cumulative cache_read_input_tokens=20, got %q", modelUsage.RawDetails)
+	}
+	if strings.Contains(modelUsage.RawDetails, `"stale_marker"`) {
+		t.Errorf("expected RawDetails to overwrite stale_marker, got %q", modelUsage.RawDetails)
 	}
 }
 
@@ -716,7 +737,7 @@ func TestAnthropicChatStreamlyWithSenderPreservesUsageOnError(t *testing.T) {
 	ctx := t.Context()
 
 	apiKey := "test-key"
-	modelUsage := &common.ModelUsage{}
+	modelUsage := &common.ModelUsage{RawDetails: `{"stale_marker":true}`}
 	chatConfig := &ChatConfig{}
 	senderErr := fmt.Errorf("client network disconnected")
 	err := newAnthropicForTest(srv.URL).ChatStreamlyWithSender(
@@ -749,6 +770,12 @@ func TestAnthropicChatStreamlyWithSenderPreservesUsageOnError(t *testing.T) {
 	if modelUsage.ErrorMessage == "" {
 		t.Errorf("expected ErrorMessage to be populated for failed stream")
 	}
+	if !strings.Contains(modelUsage.RawDetails, `"incomplete":true`) {
+		t.Errorf("expected RawDetails to contain incomplete marker, got %q", modelUsage.RawDetails)
+	}
+	if strings.Contains(modelUsage.RawDetails, `"stale_marker"`) {
+		t.Errorf("expected RawDetails to overwrite stale_marker, got %q", modelUsage.RawDetails)
+	}
 }
 
 func TestAnthropicChatStreamlyWithSenderInterruptedStreamPreservesUsage(t *testing.T) {
@@ -762,7 +789,7 @@ func TestAnthropicChatStreamlyWithSenderInterruptedStreamPreservesUsage(t *testi
 	ctx := t.Context()
 
 	apiKey := "test-key"
-	modelUsage := &common.ModelUsage{}
+	modelUsage := &common.ModelUsage{RawDetails: `{"stale_marker":true}`}
 	chatConfig := &ChatConfig{}
 	err := newAnthropicForTest(srv.URL).ChatStreamlyWithSender(
 		ctx,
@@ -786,6 +813,12 @@ func TestAnthropicChatStreamlyWithSenderInterruptedStreamPreservesUsage(t *testi
 	}
 	if modelUsage.ErrorMessage != "anthropic: stream ended before message_stop" {
 		t.Errorf("modelUsage.ErrorMessage=%q, want 'anthropic: stream ended before message_stop'", modelUsage.ErrorMessage)
+	}
+	if !strings.Contains(modelUsage.RawDetails, `"incomplete":true`) {
+		t.Errorf("expected RawDetails to contain incomplete marker, got %q", modelUsage.RawDetails)
+	}
+	if strings.Contains(modelUsage.RawDetails, `"stale_marker"`) {
+		t.Errorf("expected RawDetails to overwrite stale_marker, got %q", modelUsage.RawDetails)
 	}
 }
 

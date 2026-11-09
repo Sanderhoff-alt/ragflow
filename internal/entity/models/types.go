@@ -90,9 +90,13 @@ type ChatResponse struct {
 // LLMBundle for accurate Langfuse reporting and run aggregation.
 // Mirrors Python's common.token_utils.usage_from_response() split.
 type TokenUsage struct {
-	PromptTokens     int `json:"prompt_tokens"  mapstructure:"prompt_tokens"`
-	CompletionTokens int `json:"completion_tokens"  mapstructure:"completion_tokens"`
-	TotalTokens      int `json:"total_tokens"  mapstructure:"total_tokens"`
+	PromptTokens        int    `json:"prompt_tokens"  mapstructure:"prompt_tokens"`
+	CompletionTokens    int    `json:"completion_tokens"  mapstructure:"completion_tokens"`
+	TotalTokens         int    `json:"total_tokens"  mapstructure:"total_tokens"`
+	CacheReadTokens     int    `json:"cache_read_tokens,omitempty"  mapstructure:"cache_read_tokens"`
+	CacheCreationTokens int    `json:"cache_creation_tokens,omitempty"  mapstructure:"cache_creation_tokens"`
+	ReasoningTokens     int    `json:"reasoning_tokens,omitempty"  mapstructure:"reasoning_tokens"`
+	RawDetails          string `json:"raw_details,omitempty"  mapstructure:"raw_details"`
 }
 
 type EmbeddingData struct {

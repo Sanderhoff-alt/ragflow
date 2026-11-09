@@ -493,12 +493,20 @@ func parseAnthropicChatResponse(body []byte, _ *ChatConfig) (chatResponseParts, 
 		result.Usage.CacheCreationInputTokens +
 		result.Usage.CacheReadInputTokens
 
+	rawDetails := ""
+	if b, err := json.Marshal(result.Usage); err == nil {
+		rawDetails = string(b)
+	}
+
 	var usage *TokenUsage
 	if totalPromptTokens > 0 || result.Usage.OutputTokens > 0 {
 		usage = &TokenUsage{
-			PromptTokens:     totalPromptTokens,
-			CompletionTokens: result.Usage.OutputTokens,
-			TotalTokens:      totalPromptTokens + result.Usage.OutputTokens,
+			PromptTokens:        totalPromptTokens,
+			CompletionTokens:    result.Usage.OutputTokens,
+			TotalTokens:         totalPromptTokens + result.Usage.OutputTokens,
+			CacheReadTokens:     result.Usage.CacheReadInputTokens,
+			CacheCreationTokens: result.Usage.CacheCreationInputTokens,
+			RawDetails:          rawDetails,
 		}
 	}
 
@@ -718,9 +726,13 @@ func (a *AnthropicModel) ChatStreamlyWithSender(ctx context.Context, modelName s
 		hasCacheRead     bool
 	)
 
+	rawUsageMap := make(map[string]interface{})
 	updateUsage := func(usageMap map[string]interface{}) {
 		if usageMap == nil {
 			return
+		}
+		for k, v := range usageMap {
+			rawUsageMap[k] = v
 		}
 		if v, ok := usageMap["input_tokens"].(float64); ok {
 			inputTokens = int(v)
@@ -743,7 +755,12 @@ func (a *AnthropicModel) ChatStreamlyWithSender(ctx context.Context, modelName s
 		}
 
 		if hasInputTokens || hasCacheCreation || hasCacheRead {
+			streamUsage.CacheCreationTokens = cacheCreation
+			streamUsage.CacheReadTokens = cacheRead
 			streamUsage.PromptTokens = inputTokens + cacheCreation + cacheRead
+		}
+		if b, err := json.Marshal(rawUsageMap); err == nil {
+			streamUsage.RawDetails = string(b)
 		}
 	}
 
@@ -764,6 +781,14 @@ func (a *AnthropicModel) ChatStreamlyWithSender(ctx context.Context, modelName s
 			}
 			if modelUsage != nil && modelUsage.ErrorMessage == "" {
 				modelUsage.ErrorMessage = errMsg
+			}
+			rawUsageMap["error"] = errMsg
+			rawUsageMap["incomplete"] = true
+			if b, err := json.Marshal(rawUsageMap); err == nil {
+				streamUsage.RawDetails = string(b)
+				if modelUsage != nil {
+					modelUsage.RawDetails = streamUsage.RawDetails
+				}
 			}
 		}
 		applyStreamUsageWithContext(ctx, modelConfig, modelUsage, &streamUsage)

@@ -46,6 +46,11 @@ type ModelUsage struct {
 	InputTokens  int `json:"input_tokens"`
 	OutputTokens int `json:"output_tokens"`
 	TotalTokens  int `json:"total_tokens"`
+
+	CacheReadTokens     int    `json:"cache_read_tokens"`
+	CacheCreationTokens int    `json:"cache_creation_tokens"`
+	ReasoningTokens     int    `json:"reasoning_tokens"`
+	RawDetails          string `json:"raw_details,omitempty"`
 }
 
 func (m *ModelUsage) String() string {

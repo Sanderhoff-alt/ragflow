@@ -38,6 +38,7 @@ import (
 	"ragflow/internal/engine"
 	"ragflow/internal/engine/kvrocks"
 	_ "ragflow/internal/ingestion/wire"
+	"ragflow/internal/ledger"
 	"ragflow/internal/server"
 	"ragflow/internal/server/admin"
 	apipkg "ragflow/internal/server/api"
@@ -548,6 +549,8 @@ func main() {
 	if err != nil {
 		common.Fatal("Failed to initialize message queue engine", zap.Error(err))
 	}
+	ledger.Init(dao.DB)
+	defer ledger.Close()
 
 	err = server.InitVariables(kvrocks.Get())
 	if err != nil {

@@ -4364,8 +4364,8 @@ func chatForSQL(
 		Temperature: &tempLow,
 	}
 	msgs := []modelModule.Message{
-		modelModule.Message{Role: "system", Content: sysPrompt},
-		modelModule.Message{Role: "user", Content: userPrompt},
+		{Role: "system", Content: sysPrompt},
+		{Role: "user", Content: userPrompt},
 	}
 	resp, err := chatModel.ChatWithMessages(ctx, msgs, cfg, nil)
 	if err != nil {

@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"ragflow/internal/common"
 	"ragflow/internal/engine/clickhouse"
+	"ragflow/internal/ledger"
 	"ragflow/internal/permission"
 	"sort"
 	"strings"
@@ -161,6 +162,10 @@ func collectModelUsage(modelUsage *common.ModelUsage, usage *TokenUsage) error {
 		modelUsage.InputTokens = usage.PromptTokens
 		modelUsage.OutputTokens = usage.CompletionTokens
 		modelUsage.TotalTokens = usage.TotalTokens
+		modelUsage.CacheReadTokens = usage.CacheReadTokens
+		modelUsage.CacheCreationTokens = usage.CacheCreationTokens
+		modelUsage.ReasoningTokens = usage.ReasoningTokens
+		modelUsage.RawDetails = usage.RawDetails
 	}
 	if modelUsage.StartAt.IsZero() {
 		modelUsage.StartAt = time.Now()
@@ -168,7 +173,6 @@ func collectModelUsage(modelUsage *common.ModelUsage, usage *TokenUsage) error {
 	if modelUsage.ResponseTimeMS <= 0 && !modelUsage.StartAt.IsZero() {
 		modelUsage.ResponseTimeMS = time.Since(modelUsage.StartAt).Milliseconds()
 	}
-
 	// For calls using saved configurations, tenant_id, provider_name, and instance_id are required.
 	// If any required attribution is missing, log server error with safe diagnostic info (no API key),
 	// count drop, and skip recording.
@@ -190,6 +194,9 @@ func collectModelUsage(modelUsage *common.ModelUsage, usage *TokenUsage) error {
 		return nil
 	}
 
+	if modelUsage.ModelName != "" || modelUsage.TotalTokens > 0 {
+		ledger.PushUsage(modelUsage)
+	}
 	driver := clickhouse.GetDriver()
 	if driver == nil {
 		return nil
